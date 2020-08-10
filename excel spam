@@ -1,0 +1,161 @@
+import xlsxwriter
+import os
+
+# Edit to appropriate beginning month, day, and year.
+# Set to present day if desirable.
+# Month 1 = January. Day 1 = First day of month.
+startMonth = 1
+startDay = 1
+startYear = 2020
+
+# Data generation limit in years.
+# Script will automatically stop after set amount of years pass.
+
+dataGenLimit = 3
+
+# Assigns an abbreviation to each month number.
+def monthFinder(startMonth):
+    if startMonth == 1:
+        outFileName = "1 - Jan"
+    elif startMonth == 2:
+        outFileName = "2 - Feb"
+    elif startMonth == 3:
+        outFileName = "3 - Mar"
+    elif startMonth == 4:
+        outFileName = "4 - Apr"
+    elif startMonth == 5:
+        outFileName = "5 - May"
+    elif startMonth == 6:
+        outFileName = "6 - Jun"
+    elif startMonth == 7:
+        outFileName = "7 - Jul"
+    elif startMonth == 8:
+        outFileName = "8 - Aug"
+    elif startMonth == 9:
+        outFileName = "9 - Sep"
+    elif startMonth == 10:
+        outFileName = "10 - Oct"
+    elif startMonth == 11:
+        outFileName = "11 - Nov"
+    elif startMonth == 12:
+        outFileName = "12 - Dec"
+    else:
+        outFileName = "invalid"
+    return outFileName
+
+# Creates a path in the file system for each Excel sheet.
+# Will create year/month directory. (e.g. ../2020/Jan)
+def createFolderPath(startYear, outFileName):
+    folder_path = os.path.join("Generated Load", str(startYear), outFileName)
+    if not os.path.exists(folder_path):
+        os.makedirs(folder_path)
+    return folder_path
+
+# Saves Excel file as a number to match the appropriate day.
+# (e.g. ../1.xlsx)
+def saveExcelFile(folder_path, startDay):
+    outWorkbook = xlsxwriter.Workbook(os.path.join(folder_path, str(startDay) + ".xlsx"))
+    outSheet = outWorkbook.add_worksheet()
+    return outSheet, outWorkbook
+
+
+# Adds 0 to tens digit of hours if needed. (e.g. 04:00, 09:00)
+def setupWriteHours():
+    xCellEdit = 1
+    yCellEdit = 1
+    hourValueTens = "0"
+    hourValue = 0
+    return xCellEdit, yCellEdit, hourValueTens, hourValue
+
+# Writes hours. (e.g. 02:00, 11:00, 23:00)
+def writeHours(xCellEdit, yCellEdit, hourValueTens, hourValue, outSheet):
+    outSheet.write(xCellEdit, yCellEdit, hourValueTens + str(hourValue) + ":00")
+    xCellEdit += 1
+    hourValue += 1
+    if hourValue > 9:
+        hourValueTens = ""
+    return xCellEdit, hourValue, hourValueTens
+
+# Sets up writing load for residential customers.
+def setupBaseResidentialLoad():
+    xCellEdit = 1
+    yCellEdit = 2
+    hourLoad = 0
+    return xCellEdit, yCellEdit, hourLoad
+
+# Writes base load according to time of day.
+# Based off of real historical data.
+def writeBaseResidentialLoad(xCellEdit, yCellEdit, hourLoad, outSheet):
+    if xCellEdit > 6:
+        hourLoad = "600"
+    else:
+        hourLoad = "0"
+    outSheet.write(xCellEdit, yCellEdit, hourLoad)
+    xCellEdit += 1
+    return xCellEdit
+
+# Generates randomized weather that will affect load.
+def randomWeather():
+    pass
+
+# Adjusts load based on weather effects generated.
+
+def weatherEffects():
+    pass
+
+# Adjusts cell sizes on Excel sheet.
+def formatExcelFile(outSheet):
+    outSheet.set_column(2, 3, 20)
+
+    outSheet.write(0, 1, "Hour")
+    outSheet.write(0, 2, "Residential Load")
+    outSheet.write(0, 3, "Commercial Load")
+
+# Writes Excel file.
+def fillExcelFile(startMonth, startYear, startDay):
+    outFileName = monthFinder(startMonth)
+    folder_path = createFolderPath(startYear, outFileName)
+    outSheet, outWorkbook = saveExcelFile(folder_path, startDay)
+    formatExcelFile(outSheet)
+
+    xCellEdit, yCellEdit, hourValueTens, hourValue = setupWriteHours()
+
+    for num1 in range(24):
+        xCellEdit, hourValue, hourValueTens = writeHours(xCellEdit, yCellEdit, hourValueTens, hourValue, outSheet)
+
+    xCellEdit, yCellEdit, hourLoad = setupBaseResidentialLoad()
+
+    for num2 in range(24):
+        xCellEdit = writeBaseResidentialLoad(xCellEdit, yCellEdit, hourLoad, outSheet)
+    outWorkbook.close()
+    startDay += 1
+    return outFileName, folder_path, outSheet, outWorkbook, xCellEdit, yCellEdit, hourValueTens, hourValue, startDay
+
+# Generates load information every day for twelve months. Number of years is adjustable.
+print("Beginning generation.")
+while dataGenLimit != 0:
+    if startMonth == 1 or startMonth == 3 or startMonth == 5 or startMonth == 7 or startMonth == 8 or startMonth == 10 or startMonth == 12:
+        # Will repeat 31 times for 31 days
+        for num in range(31):
+            outFileName, folder_path, outSheet, outWorkbook, xCellEdit, yCellEdit, hourValueTens, hourValue, startDay = fillExcelFile(startMonth, startYear, startDay)
+        if startMonth == 12:
+            dataGenLimit -= 1
+            startYear += 1
+            startMonth = 1
+            print("Working . . .")
+        elif startMonth != 12:
+            startMonth += 1
+        startDay = 1
+    elif startMonth == 4 or startMonth == 6 or startMonth == 9 or startMonth == 11:
+        for num in range(30):
+            outFileName, folder_path, outSheet, outWorkbook, xCellEdit, yCellEdit, hourValueTens, hourValue, startDay = fillExcelFile(startMonth, startYear, startDay)
+        startMonth += 1
+        startDay = 1
+    elif startMonth == 2:
+        for num in range(29):
+            outFileName, folder_path, outSheet, outWorkbook, xCellEdit, yCellEdit, hourValueTens, hourValue, startDay = fillExcelFile(
+                startMonth, startYear, startDay)
+        startMonth += 1
+        startDay = 1
+print("Complete!")
+
