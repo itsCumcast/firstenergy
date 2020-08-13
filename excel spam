@@ -1,9 +1,13 @@
 import xlsxwriter
 import os
+import openpyxl
+import scipy.stats as stats
+from openpyxl import load_workbook
 
 # Edit to appropriate beginning month, day, and year.
 # Set to present day if desirable.
 # Month 1 = January. Day 1 = First day of month.
+
 startMonth = 1
 startDay = 1
 startYear = 2020
@@ -11,7 +15,12 @@ startYear = 2020
 # Data generation limit in years.
 # Script will automatically stop after set amount of years pass.
 
-dataGenLimit = 3
+dataGenLimit = 1
+
+# Historical data file location.
+
+weatherBook = load_workbook(filename= "2019_weather.xlsx")
+weatherSheet = weatherBook.active
 
 # Assigns an abbreviation to each month number.
 def monthFinder(startMonth):
@@ -87,7 +96,7 @@ def setupBaseResidentialLoad():
 # Based off of real historical data.
 def writeBaseResidentialLoad(xCellEdit, yCellEdit, hourLoad, outSheet):
     if xCellEdit > 6:
-        hourLoad = "600"
+        hourLoad = "0"
     else:
         hourLoad = "0"
     outSheet.write(xCellEdit, yCellEdit, hourLoad)
@@ -95,8 +104,21 @@ def writeBaseResidentialLoad(xCellEdit, yCellEdit, hourLoad, outSheet):
     return xCellEdit
 
 # Generates randomized weather that will affect load.
-def randomWeather():
-    pass
+def randomWeather(startMonth, weatherSheet, outSheet, xCellEdit, yCellEdit):
+    tempMax = weatherSheet.cell(row = startMonth+1, column = 4).value
+    tempMin = weatherSheet.cell(row = startMonth+1, column = 5).value
+    tempAvg = weatherSheet.cell(row = startMonth+1, column = 3).value
+    tempStd = 2
+    tempRandEquation = stats.truncnorm((tempMin - tempAvg) / tempStd, (tempMax - tempAvg) / tempStd, loc=tempAvg, scale=tempStd)
+    tempRandValue = tempRandEquation.rvs(1)
+    tempRandValue = float(tempRandValue)
+    tempRandValue = round(tempRandValue)
+    outSheet.write(xCellEdit, yCellEdit, tempRandValue)
+    xCellEdit += 1
+    return xCellEdit
+
+
+
 
 # Adjusts load based on weather effects generated.
 
@@ -106,10 +128,12 @@ def weatherEffects():
 # Adjusts cell sizes on Excel sheet.
 def formatExcelFile(outSheet):
     outSheet.set_column(2, 3, 20)
+    outSheet.set_column(4, 4, 30)
 
     outSheet.write(0, 1, "Hour")
     outSheet.write(0, 2, "Residential Load")
     outSheet.write(0, 3, "Commercial Load")
+    outSheet.write(0, 4, "Temperature (Fahrenheit)")
 
 # Writes Excel file.
 def fillExcelFile(startMonth, startYear, startDay):
@@ -127,6 +151,11 @@ def fillExcelFile(startMonth, startYear, startDay):
 
     for num2 in range(24):
         xCellEdit = writeBaseResidentialLoad(xCellEdit, yCellEdit, hourLoad, outSheet)
+
+    xCellEdit, yCellEdit = 1, 4
+    for num3 in range(24):
+        xCellEdit = randomWeather(startMonth, weatherSheet, outSheet, xCellEdit, yCellEdit)
+
     outWorkbook.close()
     startDay += 1
     return outFileName, folder_path, outSheet, outWorkbook, xCellEdit, yCellEdit, hourValueTens, hourValue, startDay
